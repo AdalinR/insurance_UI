@@ -1,0 +1,186 @@
+<div class="policy-builder-container">
+    <!-- Header Section -->
+    <div class="header">
+        <div class="product-info">
+            <h2>Product Templates</h2>
+            <p>{{ templateName }} - {{ templateId }} ({{ templateVersion }}) {{ templateStatus | titlecase }}</p>
+        </div>
+        <div class="header-actions">
+            <!-- <button class="btn filter" (click)="filterBy()">Filter By</button>
+            <button class="btn test-case" (click)="runTestCase()">Run Test Case</button> -->
+            <button class="btn edit-product" (click)="editProductDetail()">Save template</button>
+        </div>
+    </div>
+
+    <!-- Content Container -->
+    <div class="content-container">
+        <div class="side-panel">
+            <!-- Tabs Navigation -->
+            <div class="tabs-header">
+                <button class="tab-button" [class.active]="activeTab === 'elements'" (click)="setActiveTab('elements')">
+                    Policy Elements
+                </button>
+                <button class="tab-button" [class.active]="activeTab === 'components'"
+                    (click)="setActiveTab('components')">
+                    Policy Components
+                </button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content" *ngIf="activeTab === 'elements'">
+                <div class="sidebar-items">
+                    <div *ngFor="let node of availableNodes" [ngStyle]="getNodeStyle(node)" draggable="true"
+                        (dragstart)="onDragStart($event, node.type)">
+                        {{ node.label }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" *ngIf="activeTab === 'components'">
+                <div class="sidebar-items">
+                    <div *ngFor="let node of availableInsuranceNodes" [ngStyle]="getNodeStyle(node)" draggable="true"
+                        (dragstart)="onDragStart($event, node.type)">
+                        {{ node.label }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas" (drop)="onDrop($event)" (dragover)="allowDrop($event)">
+            <!-- SVG for connection lines -->
+            <svg class="connections-svg" *ngIf="rootNodeId">
+                <ng-container *ngFor="let nodeId of getNodeKeys()">
+                    <ng-container *ngFor="let childId of treeNodes[nodeId].children">
+                        <path [attr.d]="getPathBetweenNodes(nodeId, childId)" stroke="#666" stroke-width="2" fill="none"
+                            marker-end="url(#arrow)">
+                        </path>
+                    </ng-container>
+                </ng-container>
+                <defs>
+                    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#666" />
+                    </marker>
+                </defs>
+            </svg>
+
+            <!-- Render tree -->
+            <div class="policy-tree" *ngIf="rootNodeId">
+                <!-- Tree Rendering Template -->
+                <ng-template #nodeTemplate let-nodeId>
+                    <ng-container *ngIf="treeNodes[nodeId] as node">
+                        <div class="node-container" [style.left.px]="node.position?.x" [style.top.px]="node.position?.y"
+                            cdkDrag cdkDragBoundary=".canvas" (cdkDragEnded)="onNodeDragEnd($event, nodeId)">
+                            <div class="node" [ngStyle]="getNodeStyle(node)" (click)="openNodeForm(nodeId)">
+                                {{ node.label }}
+                                <div class="node-description" *ngIf="node.formData">
+                                    {{ node.formData.description || node.placeholder }}
+                                </div>
+                            </div>
+                            <div class="node-children">
+                                <div *ngFor="let childId of node.children" class="child-node">
+                                    <ng-container
+                                        *ngTemplateOutlet="nodeTemplate; context: {$implicit: childId}"></ng-container>
+                                </div>
+                                <div class="drop-zone" (drop)="onDrop($event, nodeId)" (dragover)="allowDrop($event)">
+                                    Drop node here
+                                </div>
+                            </div>
+                        </div>
+                    </ng-container>
+                </ng-template>
+
+
+                <ng-container *ngTemplateOutlet="nodeTemplate; context: {$implicit: rootNodeId}"></ng-container>
+            </div>
+
+            <div class="empty-canvas" *ngIf="!rootNodeId">
+                <p>Drag and drop a Policy Element to start building your template</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Node Form Modal -->
+    <div class="modal" *ngIf="showFormModal && currentFormNode">
+        <div class="modal-content">
+            <h3>{{ currentFormNode.label }}</h3>
+
+            <ng-container *ngIf="!currentFormNode.formData">
+                {{ initFormData(currentFormNode) }}
+            </ng-container>
+
+            <!-- Form fields based on node type -->
+            <div class="form-group" *ngIf="currentFormNode.type === 'plan'">
+                <label>Plan Name</label>
+                <input type="text" [(ngModel)]="currentFormNode.formData.name">
+            </div>
+
+            <div class="form-group" *ngIf="currentFormNode.type === 'benefit-type'">
+                <label>Benefit Type</label>
+                <select [(ngModel)]="currentFormNode.formData.benefitType">
+                    <option value="inpatient">Inpatient</option>
+                    <option value="outpatient">Outpatient</option>
+                    <option value="dental">Dental</option>
+                    <option value="vision">Vision</option>
+                </select>
+            </div>
+
+            <div class="form-group" *ngIf="currentFormNode.type === 'unit-price'">
+                <label>Price per Unit</label>
+                <input type="number" [(ngModel)]="currentFormNode.formData.price">
+            </div>
+
+            <div class="form-group" *ngIf="currentFormNode.type === 'benefits'">
+                <label>Benefit Description</label>
+                <textarea [(ngModel)]="currentFormNode.formData.description"></textarea>
+            </div>
+
+            <!-- Form fields for limit types -->
+            <div class="form-group" *ngIf="currentFormNode.type.includes('limit') || 
+                                    currentFormNode.type === 'deductible' || 
+                                    currentFormNode.type === 'copayment'">
+                <label>Limit Type</label>
+                <select [(ngModel)]="currentFormNode.formData.limitType">
+                    <option value="sum-insured">Sum Insured</option>
+                    <option value="retail">Retail</option>
+                    <option value="duration">Duration</option>
+                    <option value="deductible">Deductible</option>
+                    <option value="copayment">Copayment</option>
+                </select>
+
+                <div *ngIf="currentFormNode.type === 'duration-limit'">
+                    <label>Unit</label>
+                    <select [(ngModel)]="currentFormNode.formData.unit">
+                        <option value="days">Days</option>
+                        <option value="weeks">Weeks</option>
+                        <option value="months">Months</option>
+                        <option value="years">Years</option>
+                    </select>
+
+                    <label>Number of {{ currentFormNode.formData.unit || 'Days' }}</label>
+                    <input type="number" [(ngModel)]="currentFormNode.formData.duration">
+                </div>
+
+                <div *ngIf="currentFormNode.type !== 'duration-limit'">
+                    <label>Amount</label>
+                    <input type="number" [(ngModel)]="currentFormNode.formData.amount">
+                </div>
+            </div>
+
+            <div class="form-group" *ngIf="currentFormNode.type === 'provider-rate'">
+                <label>Provider Rate (%)</label>
+                <input type="number" [(ngModel)]="currentFormNode.formData.rate">
+            </div>
+
+            <div class="form-group">
+                <label>Explanation of Benefit Template</label>
+                <textarea [(ngModel)]="currentFormNode.formData.description"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn save" (click)="saveNodeForm(currentFormNode.formData)">Save</button>
+                <button class="btn cancel" (click)="cancelNodeForm()">Cancel</button>
+                <button class="btn remove-button" (click)="removeNode(selectedNode || '')">Remove</button>
+            </div>
+        </div>
+    </div>
+</div>
