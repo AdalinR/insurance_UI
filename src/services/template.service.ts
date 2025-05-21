@@ -1,205 +1,177 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { Connection, NodeType, TemplateInfo, TemplateNode } from '../app/models/template-node.model';
+import { PolicyNode, PolicyTemplate } from '../app/components/template-builder/template-builder.component';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TemplateService {
-  private nodesSubject = new BehaviorSubject<TemplateNode[]>([]);
-  private connectionsSubject = new BehaviorSubject<Connection[]>([]);
-  private selectedNodeSubject = new BehaviorSubject<TemplateNode | null>(null);
-  private templateInfoSubject = new BehaviorSubject<TemplateInfo>({
-    id: 'ABC-007',
-    name: 'Health Insurance Template',
-    version: 'Plan 1',
-    status: 'draft',
-    lastModified: new Date()
-  });
+  // Storage keys
+  private readonly TEMPLATES_STORAGE_KEY = 'policyTemplates';
+  private readonly CURRENT_TEMPLATE_KEY = 'currentTemplate';
+  private readonly EDIT_TEMPLATE_ID_KEY = 'editTemplateId';
 
-  nodes$ = this.nodesSubject.asObservable();
-  connections$ = this.connectionsSubject.asObservable();
-  selectedNode$ = this.selectedNodeSubject.asObservable();
-  templateInfo$ = this.templateInfoSubject.asObservable();
+  // BehaviorSubjects to enable reactive programming
+  private currentTemplateSubject = new BehaviorSubject<PolicyTemplate | null>(null);
+  private savedTemplatesSubject = new BehaviorSubject<{ [key: string]: PolicyTemplate }>({});
 
   constructor() {
-    // Initialize with default template
-    this.initializeDefaultTemplate();
+    // Load saved templates on service initialization
+    this.loadSavedTemplates();
+    this.loadCurrentTemplate();
   }
 
-  private initializeDefaultTemplate() {
-    const policyNode: TemplateNode = {
-      id: 'policy-1',
-      type: NodeType.POLICY,
-      label: 'Policy Template',
-      x: 50,
-      y: 100
-    };
-
-    const planNode: TemplateNode = {
-      id: 'plan-1',
-      type: NodeType.PLAN,
-      label: 'Plan',
-      parentId: 'policy-1',
-      x: 50,
-      y: 200
-    };
-
-    const benefitNode: TemplateNode = {
-      id: 'benefit-1',
-      type: NodeType.BENEFIT_TYPE,
-      label: 'Benefit Type',
-      parentId: 'plan-1',
-      properties: {
-        inpatient: true
-      },
-      x: 50,
-      y: 300
-    };
-
-    const unitPriceNode: TemplateNode = {
-      id: 'unitprice-1',
-      type: NodeType.UNIT_PRICE,
-      label: 'Unit Price',
-      parentId: 'benefit-1',
-      properties: {
-        amount: 1000,
-        currency: 'INR'
-      },
-      x: 50,
-      y: 400
-    };
-
-    const bonusNode: TemplateNode = {
-      id: 'bonus-1',
-      type: NodeType.BONUS,
-      label: 'Bonus & Benefit',
-      parentId: 'benefit-1',
-      x: 200,
-      y: 400
-    };
-
-    this.nodesSubject.next([
-      policyNode,
-      planNode,
-      benefitNode,
-      unitPriceNode,
-      bonusNode
-    ]);
-
-    this.connectionsSubject.next([
-      { source: 'policy-1', target: 'plan-1' },
-      { source: 'plan-1', target: 'benefit-1' },
-      { source: 'benefit-1', target: 'unitprice-1' },
-      { source: 'benefit-1', target: 'bonus-1' }
-    ]);
+  // Observable for current template
+  get currentTemplate$(): Observable<PolicyTemplate | null> {
+    return this.currentTemplateSubject.asObservable();
   }
 
-  getNodes(): Observable<TemplateNode[]> {
-    return this.nodes$;
+  // Observable for saved templates
+  get savedTemplates$(): Observable<{ [key: string]: PolicyTemplate }> {
+    return this.savedTemplatesSubject.asObservable();
   }
 
-  getConnections(): Observable<Connection[]> {
-    return this.connections$;
+  // Get current template value
+  get currentTemplate(): PolicyTemplate | null {
+    return this.currentTemplateSubject.value;
   }
 
-  getSelectedNode(): Observable<TemplateNode | null> {
-    return this.selectedNode$;
+  // Get saved templates value
+  get savedTemplates(): { [key: string]: PolicyTemplate } {
+    return this.savedTemplatesSubject.value;
   }
 
-  getTemplateInfo(): Observable<TemplateInfo> {
-    return this.templateInfo$;
-  }
-
-  addNode(node: TemplateNode) {
-    const currentNodes = this.nodesSubject.getValue();
-    this.nodesSubject.next([...currentNodes, node]);
-    
-    if (node.parentId) {
-      const currentConnections = this.connectionsSubject.getValue();
-      this.connectionsSubject.next([
-        ...currentConnections,
-        { source: node.parentId, target: node.id }
-      ]);
+  /**
+   * Load saved templates from localStorage
+   */
+  loadSavedTemplates(): void {
+    try {
+      const savedTemplatesStr = localStorage.getItem(this.TEMPLATES_STORAGE_KEY);
+      if (savedTemplatesStr) {
+        const savedTemplates = JSON.parse(savedTemplatesStr);
+        this.savedTemplatesSubject.next(savedTemplates);
+      }
+    } catch (e) {
+      console.error('Error loading saved templates:', e);
+      this.savedTemplatesSubject.next({});
     }
   }
 
-  updateNode(updatedNode: TemplateNode) {
-    const currentNodes = this.nodesSubject.getValue();
-    const updatedNodes = currentNodes.map(node => 
-      node.id === updatedNode.id ? updatedNode : node
-    );
-    this.nodesSubject.next(updatedNodes);
-    
-    if (this.selectedNodeSubject.getValue()?.id === updatedNode.id) {
-      this.selectedNodeSubject.next(updatedNode);
+  /**
+   * Load current template from localStorage
+   */
+  loadCurrentTemplate(): void {
+    try {
+      // First check if we're editing an existing template
+      const editTemplateId = localStorage.getItem(this.EDIT_TEMPLATE_ID_KEY);
+      
+      if (editTemplateId) {
+        const savedTemplates = this.savedTemplatesSubject.value;
+        if (savedTemplates[editTemplateId]) {
+          this.currentTemplateSubject.next({ ...savedTemplates[editTemplateId] });
+          // Clear the edit flag after loading
+          localStorage.removeItem(this.EDIT_TEMPLATE_ID_KEY);
+          return;
+        }
+      }
+      
+      // Try to load from session storage
+      const currentTemplateStr = sessionStorage.getItem(this.CURRENT_TEMPLATE_KEY);
+      if (currentTemplateStr) {
+        const currentTemplate = JSON.parse(currentTemplateStr);
+        this.currentTemplateSubject.next(currentTemplate);
+      }
+    } catch (e) {
+      console.error('Error loading current template:', e);
+      this.currentTemplateSubject.next(null);
     }
   }
 
-  removeNode(nodeId: string) {
-    const currentNodes = this.nodesSubject.getValue();
-    const filteredNodes = currentNodes.filter(node => node.id !== nodeId);
-    this.nodesSubject.next(filteredNodes);
-    
-    const currentConnections = this.connectionsSubject.getValue();
-    const filteredConnections = currentConnections.filter(
-      conn => conn.source !== nodeId && conn.target !== nodeId
-    );
-    this.connectionsSubject.next(filteredConnections);
-    
-    if (this.selectedNodeSubject.getValue()?.id === nodeId) {
-      this.selectedNodeSubject.next(null);
-    }
-  }
-
-  selectNode(node: TemplateNode | null) {
-    this.selectedNodeSubject.next(node);
-  }
-
-  updateTemplateInfo(info: Partial<TemplateInfo>) {
-    const currentInfo = this.templateInfoSubject.getValue();
-    this.templateInfoSubject.next({
-      ...currentInfo,
-      ...info,
-      lastModified: new Date()
-    });
-  }
-
-  addConnection(connection: Connection) {
-    const currentConnections = this.connectionsSubject.getValue();
-    // Check if connection already exists
-    const exists = currentConnections.some(
-      conn => conn.source === connection.source && conn.target === connection.target
-    );
-    
-    if (!exists) {
-      this.connectionsSubject.next([...currentConnections, connection]);
-    }
-  }
-
-  removeConnection(source: string, target: string) {
-    const currentConnections = this.connectionsSubject.getValue();
-    const filteredConnections = currentConnections.filter(
-      conn => !(conn.source === source && conn.target === target)
-    );
-    this.connectionsSubject.next(filteredConnections);
-  }
-
-  saveTemplate() {
-    // In a real app, this would save to a backend
-    const template = {
-      info: this.templateInfoSubject.getValue(),
-      nodes: this.nodesSubject.getValue(),
-      connections: this.connectionsSubject.getValue()
+  /**
+   * Initialize a new template
+   */
+  initNewTemplate(): PolicyTemplate {
+    const templateId = 'template-' + Math.random().toString(36).substr(2, 9);
+    const newTemplate = {
+      id: templateId,
+      name: 'New Template',
+      templateName: 'Insurance Product',
+      templateId: 'ABC-' + Math.floor(1000 + Math.random() * 9000),
+      templateVersion: '1.0',
+      templateStatus: 'draft',
+      treeNodes: {},
+      rootNodeId: null
     };
     
-    console.log('Saving template:', template);
-    // Mock successful save
-    this.updateTemplateInfo({
-      status: 'active',
-      lastModified: new Date()
-    });
+    this.setCurrentTemplate(newTemplate);
+    return newTemplate;
+  }
+
+  /**
+   * Set the current template
+   */
+  setCurrentTemplate(template: PolicyTemplate): void {
+    this.currentTemplateSubject.next(template);
+    sessionStorage.setItem(this.CURRENT_TEMPLATE_KEY, JSON.stringify(template));
+  }
+
+  /**
+   * Save templates to localStorage
+   */
+  saveSavedTemplates(): void {
+    localStorage.setItem(this.TEMPLATES_STORAGE_KEY, JSON.stringify(this.savedTemplatesSubject.value));
+  }
+
+  /**
+   * Save current template
+   */
+  saveCurrentTemplate(): void {
+    const currentTemplate = this.currentTemplateSubject.value;
+    if (!currentTemplate) return;
     
-    return true;
+    // Update in session storage
+    sessionStorage.setItem(this.CURRENT_TEMPLATE_KEY, JSON.stringify(currentTemplate));
+    
+    // Update in saved templates
+    const savedTemplates = { ...this.savedTemplatesSubject.value };
+    savedTemplates[currentTemplate.id] = { ...currentTemplate };
+    
+    // Save to localStorage
+    this.savedTemplatesSubject.next(savedTemplates);
+    this.saveSavedTemplates();
+  }
+
+  /**
+   * Load a template for editing
+   */
+  loadTemplateForEditing(templateId: string): void {
+    localStorage.setItem(this.EDIT_TEMPLATE_ID_KEY, templateId);
+  }
+
+  /**
+   * Update tree nodes in current template
+   */
+  updateTreeNodes(treeNodes: { [key: string]: PolicyNode }, rootNodeId: string | null): void {
+    const currentTemplate = this.currentTemplateSubject.value;
+    if (!currentTemplate) return;
+    
+    const updatedTemplate = {
+      ...currentTemplate,
+      treeNodes,
+      rootNodeId
+    };
+    
+    this.setCurrentTemplate(updatedTemplate);
+  }
+
+  /**
+   * Clear all templates (for testing)
+   */
+  clearAllData(): void {
+    localStorage.removeItem(this.TEMPLATES_STORAGE_KEY);
+    sessionStorage.removeItem(this.CURRENT_TEMPLATE_KEY);
+    localStorage.removeItem(this.EDIT_TEMPLATE_ID_KEY);
+    this.savedTemplatesSubject.next({});
+    this.currentTemplateSubject.next(null);
   }
 }

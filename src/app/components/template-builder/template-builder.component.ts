@@ -1,28 +1,77 @@
-import { Component, OnInit, ElementRef, ViewChild, AfterViewInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild, AfterViewInit, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { CdkDragDrop, CdkDragEnd, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-// Policy Node Interface
+import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { TemplateService } from '../../../services/template.service';
+
+// Keep the existing interfaces
 export interface PolicyNode {
-  id: string;        // Unique identifier
-  type: string;      // Type of node (plan, benefit-type, etc.)
-  label: string;     // Display label
-  color: string;     // Color for styling
-  placeholder?: string; // Optional placeholder text
-  children: string[]; // Array of child node IDs
-  position?: {       // Position on canvas
+  id: string;
+  type: string;
+  label: string;
+  color: string;
+  placeholder?: string;
+  children: string[];
+  position?: {
     x: number;
     y: number;
   };
-  formData?: any;    // Form data associated with this node
+  formData?: any;
 }
 
-// Sample component implementation with fixes
+export interface PolicyTemplate {
+  id: string;
+  name: string;
+  templateName: string;
+  templateId: string;
+  templateVersion: string;
+  templateStatus: string;
+  treeNodes: { [key: string]: PolicyNode };
+  rootNodeId: string | null;
+}
+
+export interface CoverTypeData {
+  id: string;
+  name: string;
+  type: string;
+  description: string;
+  regulatoryCode: string;
+  tooltip: string;
+  subCoverYN: string;
+  status: string;
+  remarks: string;
+}
+
+export interface CoverDetailsData {
+  id: string;
+  coverTypeId: string;
+  type: string;
+  coverageLimit: number;
+  calculationType: string;
+  taxExcempted: string;
+  excemptionReference: string;
+  excemptionType: string;
+  proRata: string;
+  minimumPremium: number;
+  baseRate: number;
+  discountApplicableFor: string;
+  sumInsured: number;
+  dependentCover: string;
+  dependantCoverName: string;
+  effectiveDate: string;
+  effectiveEndDate: string;
+  excessPercent: number;
+  excessAmount: number;
+  excessDesc: string;
+}
+
 @Component({
   selector: 'app-template-builder',
   templateUrl: './template-builder.component.html',
   styleUrls: ['./template-builder.component.scss'],
   standalone: false
 })
-export class TemplateBuilderComponent implements OnInit, AfterViewInit {
+export class TemplateBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   // Component properties
   activeTab = 'elements';
   showFormModal = false;
@@ -33,29 +82,82 @@ export class TemplateBuilderComponent implements OnInit, AfterViewInit {
 
   // Available nodes for dragging
   availableNodes: PolicyNode[] = [
-    { id: 'plan-template', type: 'plan', label: 'Plan', color: '#0052cc', children: [], placeholder: '---' },
-    { id: 'benefit-type-template', type: 'benefit-type', label: 'Benefit Type', color: '#00875a', children: [], placeholder: '---' },
-    { id: 'unit-price-template', type: 'unit-price', label: 'Unit Price', color: '#8f00ff', children: [], placeholder: '---' },
-    { id: 'benefits-template', type: 'benefits', label: 'Benefits', color: '#00875a', children: [], placeholder: '---' }
+    { id: 'Product', type: 'product', label: 'Product Details', color: '#00875a', children: [], placeholder: '---' },
+    { id: 'Section', type: 'section', label: 'Section Details', color: '#0052cc', children: [], placeholder: '---' },
+    { id: 'CoverType', type: 'coverType', label: 'Cover Type', color: '#00875a', children: [], placeholder: '---' },
+    { id: 'Cover', type: 'cover', label: 'Cover Details', color: '#0052cc', children: [], placeholder: '---' },
+    { id: 'Rating Fields', type: 'rating-fields', label: 'Rating Fields', color: '#00875a', children: [], placeholder: '---' },
+    { id: 'Document', type: 'document', label: 'Document', color: '#0052cc', children: [], placeholder: '---' }
   ];
 
   // Available insurance components for dragging
   availableInsuranceNodes: PolicyNode[] = [
-    { id: 'sum-insured-template', type: 'limit', label: 'Sum Insured', color: '#e60000', children: [], placeholder: '---' },
-    { id: 'retail-limit-template', type: 'retail-limit', label: 'Retail Limit', color: '#e60000', children: [], placeholder: '---' },
-    { id: 'duration-limit-template', type: 'duration-limit', label: 'Duration Limit', color: '#e60000', children: [], placeholder: '---' },
-    { id: 'deductible-template', type: 'deductible', label: 'Deductible', color: '#e60000', children: [], placeholder: '---' },
-    { id: 'copayment-template', type: 'copayment', label: 'Co-payment', color: '#e60000', children: [], placeholder: '---' }
+    { id: 'sum-insured-template', type: 'sumInsured', label: 'Sum Insured', color: '#e60000', children: [], placeholder: '---' },
+    { id: 'coverage-limit-template', type: 'coverage-limit', label: 'Coverage Limit', color: '#e60000', children: [], placeholder: '---' },
+    // { id: 'duration-limit-template', type: 'duration-limit', label: 'Duration Limit', color: '#e60000', children: [], placeholder: '---' },
+    // { id: 'deductible-template', type: 'deductible', label: 'Deductible', color: '#e60000', children: [], placeholder: '---' },
+    // { id: 'copayment-template', type: 'copayment', label: 'Co-payment', color: '#e60000', children: [], placeholder: '---' }
   ];
-  templateName = 'Insurance Product';
-  templateId = 'ABC-007';
-  templateVersion = '1.0';
-  templateStatus = 'draft';
 
-  constructor(private cdr: ChangeDetectorRef) { }
+  productIcons: string[] = ['ion-android-boat', 'ion-android-bicycle', 'ion-android-car'];
+  currencies: string[] = ['USD', 'INR', 'EUR'];
+  productTypes: string[] = ['Motor', 'Fire', 'Life'];
+  coverTypes: string[] = ['Base', 'Benefit', 'Discount', 'Loading', 'Optional', 'Promocode'];
+  calculationType: string[] = ['Amount', 'Mile', 'Percentage', 'Factor'];
+  excemptionType: string[] = ['policyHolder Excempted', 'Risk Excempted'];
+  proRata: string[] = ['Days Based', 'No Prorata', 'Percentage Based'];
+  discountApplicableList: string[] = ['On Building', 'Content Cover', 'Domestic Cover', 'Domestic Cover New', 'Base Cover', 'Cyber Cover'];
+  template: PolicyTemplate | any = null;
+  productName: string = '';
+
+  // For saving templates
+  savedTemplates: { [key: string]: PolicyTemplate } = {};
+  coverageType: any | null;
+  
+  // For multi-selection and bulk actions
+  selectedNodes: Set<string> = new Set();
+  
+  // Subscriptions
+  private subscriptions: Subscription[] = [];
+
+  constructor(
+    private cdr: ChangeDetectorRef,
+    private router: Router,
+    private templateService: TemplateService
+  ) { }
 
   ngOnInit(): void {
-    // Initialize component
+    // Subscribe to template service for reactive updates
+    this.subscriptions.push(
+      this.templateService.currentTemplate$.subscribe(template => {
+        if (template) {
+          this.template = template;
+          this.treeNodes = template.treeNodes || {};
+          this.rootNodeId = template.rootNodeId;
+          this.productName = template.name || '';
+          this.cdr.detectChanges();
+        } else {
+          this.initNewTemplate();
+        }
+      })
+    );
+    
+    this.subscriptions.push(
+      this.templateService.savedTemplates$.subscribe(templates => {
+        this.savedTemplates = templates;
+        this.cdr.detectChanges();
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    // Clean up subscriptions
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+  }
+
+  // Initialize a new template
+  initNewTemplate(): void {
+    this.templateService.initNewTemplate();
   }
 
   ngAfterViewInit(): void {
@@ -135,10 +237,10 @@ export class TemplateBuilderComponent implements OnInit, AfterViewInit {
       label: templateNode.label,
       color: templateNode.color,
       children: [],
-      position: {
-        x: event.offsetX,
-        y: event.offsetY
-      }
+      // position: {
+      //   x: event.offsetX,
+      //   y: event.offsetY
+      // }
     };
 
     // Add to tree nodes
@@ -151,6 +253,9 @@ export class TemplateBuilderComponent implements OnInit, AfterViewInit {
       // If no root exists, set as root
       this.rootNodeId = newNodeId;
     }
+
+    // Auto-save to localStorage
+    this.saveTemplateState();
 
     // Update view
     this.cdr.detectChanges();
@@ -192,6 +297,7 @@ export class TemplateBuilderComponent implements OnInit, AfterViewInit {
     // Return SVG path with cubic bezier curve
     return `M${startX},${startY} C${cp1x},${cp1y} ${cp2x},${cp2y} ${endX},${endY}`;
   }
+
   // Method called when node is dragged
   onNodeDragEnd(event: CdkDragEnd, nodeId: string): void {
     if (!event.source || !event.source.element) return;
@@ -211,13 +317,20 @@ export class TemplateBuilderComponent implements OnInit, AfterViewInit {
     // Update node position
     if (this.treeNodes[nodeId]) {
       this.treeNodes[nodeId].position = { x, y };
+
+      // Auto-save on node drag
+      this.saveTemplateState();
+
       this.cdr.detectChanges();
     }
   }
+
   // Method to open the node form modal
   openNodeForm(nodeId: string): void {
-    console.log('Opening form for node:', nodeId, this.treeNodes);
-
+    this.coverageType = JSON.parse(sessionStorage.getItem('coverType') || '{}');
+    console.log('Coverage Type:', this.coverageType);
+    console.log('Opening form for node:', nodeId, this.treeNodes[nodeId].formData);
+  
     this.selectedNode = nodeId;
     this.currentFormNode = this.treeNodes[nodeId];
 
@@ -230,26 +343,119 @@ export class TemplateBuilderComponent implements OnInit, AfterViewInit {
   // Initialize form data for a node
   initFormData(node: PolicyNode): void {
     if (!node.formData) {
-      node.formData = {
-        description: '',
-        name: '',
-        limitType: '',
-        amount: 0,
-        unit: 'days',
-        duration: 90
-      };
-
-      // Initialize specific properties based on node type
-      if (node.type === 'duration-limit') {
-        node.formData.unit = 'days';
-        node.formData.duration = 90;
+      if (node.type === 'product') {
+        node.formData = {
+          name: '',
+          description: '',
+          regulatoryCode: '',
+          icon: '',
+          currency: '',
+          productType: 'productName',
+          effectiveDate: '',
+          status: 'Pending',
+          packagePolicy: 'No',
+          remarks: ''
+        };
+      }
+      else if (node.type === 'section') {
+        node.formData = {
+          name: '',
+          regulatoryCode: '',
+          productType: '',
+          effectiveDate: '',
+          status: 'Pending',
+          remarks: ''
+        };
+      }
+      else if (node.type === 'coverType') {
+        node.formData = {
+          name: '',
+          type: '',
+          description: '',
+          regulatoryCode: '',
+          tooltip: '',
+          subCoverYN: '',
+          status: 'Pending',
+          remarks: ''
+        };
+      }
+      else if (node.type === 'cover') {
+        node.formData = {
+          type: '',
+          // coverageLimit: '',
+          calculationType: '', 
+          taxExcempted: 'No',
+          excemptionReference:'',
+          excemptionType: '',
+          proRata: '',
+          minimumPremium: '',
+          baseRate: '',
+          discountApplicableFor: '',
+          // sumInsured: '',
+          dependentCover: '',
+          dependantCoverName: '',
+          effectiveDate: '',
+          effectiveEndDate: '',
+          excessPercent: '',
+          excessAmount: '',
+          excessDesc: ''
+        };
+      }
+      else if (node.type === 'rating-fields') {
+        node.formData = {
+          name: '',
+          description: '',
+          regulatoryCode: '',
+          tooltip: '',
+          subCoverYN: '',
+          status: 'Pending',
+          remarks: ''
+        };
+      }
+      else if (node.type === 'document') {
+        node.formData = {
+          name: '',
+          description: '',
+          regulatoryCode: '',
+          tooltip: '',
+          subCoverYN: '',
+          status: 'Pending',
+          remarks: ''
+        };
+      }
+      else if (node.type === 'coverage-limit') {
+        node.formData = {
+          coverageLimit: '',
+        };
+      }
+      else if (node.type === 'sumInsured') {
+        node.formData = {
+          sumInsured: '',
+        };
       }
     }
   }
 
   // Save node form data
   saveNodeForm(formData: any): void {
-    console.log('Form Data:', formData);
+    // Update the formData in the node
+    if (this.currentFormNode && this.selectedNode) {
+      this.treeNodes[this.selectedNode].formData = { ...formData };
+
+      // If it's a product node, update the template name
+      if (this.treeNodes[this.selectedNode].type === 'product' && formData.name) {
+        this.template.name = formData.name;
+        this.productName = formData.name;
+      }
+      if (this.treeNodes[this.selectedNode].type === 'coverType') {
+        sessionStorage.setItem('coverType', JSON.stringify(formData));
+        this.coverageType = formData;
+      }
+
+      // Save template state
+      this.saveTemplateState();
+    }
+
     this.showFormModal = false;
     this.currentFormNode = null;
     this.cdr.detectChanges();
@@ -282,6 +488,9 @@ export class TemplateBuilderComponent implements OnInit, AfterViewInit {
     // Delete node and its children recursively
     this.deleteNodeRecursive(nodeId);
 
+    // Save state after removing node
+    this.saveTemplateState();
+
     this.showFormModal = false;
     this.currentFormNode = null;
     this.cdr.detectChanges();
@@ -300,19 +509,179 @@ export class TemplateBuilderComponent implements OnInit, AfterViewInit {
     delete this.treeNodes[nodeId];
   }
 
-  // Additional helper methods
+  // Save the current template state
+  saveTemplateState(): void {
+    if (this.template) {
+      this.templateService.updateTreeNodes(this.treeNodes, this.rootNodeId);
+    }
+  }
+
+  // Save template and redirect to templates list
+  saveTemplate(): void {
+    this.templateService.saveCurrentTemplate();
+    alert('Template saved successfully!');
+  }
+
+  // Helper methods for editing
   editProductDetail(): void {
-  
+    this.templateService.saveCurrentTemplate();
   }
 
-  filterBy(): void {
-    // Implement filtering
+  // Method to load a template for editing
+  editTemplate(templateId: string): void {
+    this.templateService.loadTemplateForEditing(templateId);
+    window.location.reload(); // Reload the page to load the template
   }
 
-  runTestCase(): void {
-    // Implement test case runner
+  /**
+   * Creates a new Cover Type node under a section
+   * @param sectionId The ID of the parent section node
+   * @returns The ID of the newly created cover type node
+   */
+  createCoverTypeNode(sectionId: string): string {
+    // Generate a unique ID for the new cover type node
+    const newNodeId = this.generateId();
+    
+    // Create the new cover type node
+    const newNode: PolicyNode = {
+      id: newNodeId,
+      type: 'coverType',
+      label: 'Cover Type',
+      color: '#00875a',
+      children: [],
+      position: {
+        x: this.treeNodes[sectionId].position?.x ? this.treeNodes[sectionId].position.x + 150 : 150,
+        y: this.treeNodes[sectionId].position?.y ? this.treeNodes[sectionId].position.y + 100 : 100
+      },
+      formData: {
+        name: '',
+        type: '',
+        description: '',
+        regulatoryCode: '',
+        tooltip: '',
+        subCoverYN: 'No',
+        status: 'Pending',
+        remarks: ''
+      }
+    };
+    
+    // Add to tree nodes
+    this.treeNodes[newNodeId] = newNode;
+    
+    // Add as a child to the section
+    this.treeNodes[sectionId].children.push(newNodeId);
+    
+    // Save template state
+    this.saveTemplateState();
+    
+    return newNodeId;
   }
-  getNodeKeys(): string[] {
+
+  /**
+   * Creates a new Cover Details node under a cover type
+   * @param coverTypeId The ID of the parent cover type node
+   * @returns The ID of the newly created cover details node
+   */
+  createCoverDetailsNode(coverTypeId: string): string {
+    // Get the cover type data to use for the cover details
+    const coverTypeData = this.treeNodes[coverTypeId]?.formData;
+    const coverType = coverTypeData?.type || '';
+    
+    // Generate a unique ID for the new cover details node
+    const newNodeId = this.generateId();
+    
+    // Create the new cover details node
+    const newNode: PolicyNode = {
+      id: newNodeId,
+      type: 'cover',
+      label: 'Cover Details',
+      color: '#0052cc',
+      children: [],
+      position: {
+        x: this.treeNodes[coverTypeId].position?.x ? this.treeNodes[coverTypeId].position.x + 150 : 150,
+        y: this.treeNodes[coverTypeId].position?.y ? this.treeNodes[coverTypeId].position.y + 100 : 100
+      },
+      formData: {
+        coverTypeId: coverTypeId,
+        type: coverType,
+        coverageLimit: 0,
+        calculationType: '',
+        taxExcempted: 'No',
+        excemptionReference: '',
+        excemptionType: '',
+        proRata: '',
+        minimumPremium: 0,
+        baseRate: 0,
+        discountApplicableFor: '',
+        sumInsured: 0,
+        dependentCover: 'No',
+        dependantCoverName: '',
+        effectiveDate: new Date().toISOString().substring(0, 10),
+        effectiveEndDate: '',
+        excessPercent: 0,
+        excessAmount: 0,
+        excessDesc: ''
+      }
+    };
+    
+    // Add to tree nodes
+    this.treeNodes[newNodeId] = newNode;
+    
+    // Add as a child to the cover type
+    this.treeNodes[coverTypeId].children.push(newNodeId);
+    
+    // Store cover type in session storage for reference
+    sessionStorage.setItem('coverType', JSON.stringify(coverTypeData));
+    this.coverageType = coverTypeData;
+    
+    // Save template state
+    this.saveTemplateState();
+    
+    return newNodeId;
+  }
+
+  /**
+   * Gets all cover types under a specific section
+   * @param sectionId The ID of the section node
+   * @returns Array of cover type nodes
+   */
+  getCoverTypeNodes(sectionId: string): PolicyNode[] {
+    if (!this.treeNodes[sectionId]) return [];
+    
+    return this.treeNodes[sectionId].children
+      .filter(nodeId => this.treeNodes[nodeId] && this.treeNodes[nodeId].type === 'coverType')
+      .map(nodeId => this.treeNodes[nodeId]);
+  }
+
+  /**
+   * Gets all cover details under a specific cover type
+   * @param coverTypeId The ID of the cover type node
+   * @returns Array of cover detail nodes
+   */
+  getCoverDetailNodes(coverTypeId: string): PolicyNode[] {
+    if (!this.treeNodes[coverTypeId]) return [];
+    
+    return this.treeNodes[coverTypeId].children
+      .filter(nodeId => this.treeNodes[nodeId] && this.treeNodes[nodeId].type === 'cover')
+      .map(nodeId => this.treeNodes[nodeId]);
+  }
+
+  /**
+   * Updates a cover details form based on its parent cover type
+   * This should be called when opening the cover details form
+   * @param coverDetailsId The ID of the cover details node
+   */
+  updateCoverDetailsForm(coverDetailsId: string): void {
+    const coverDetailsNode = this.treeNodes[coverDetailsId];
+    if (!coverDetailsNode) return;
+
+    const coverTypeNode = this.treeNodes[coverDetailsNode.formData.coverTypeId];
+    if (coverTypeNode) {
+      coverDetailsNode.formData.type = coverTypeNode.formData.type;
+    }
+  }
+   getNodeKeys(): string[] {
     return Object.keys(this.treeNodes);
   }
+
 }

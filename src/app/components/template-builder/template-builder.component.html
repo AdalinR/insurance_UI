@@ -1,9 +1,10 @@
 <div class="policy-builder-container">
     <!-- Header Section -->
     <div class="header">
-        <div class="product-info">
-            <h2>Product Templates</h2>
-            <p>{{ templateName }} - {{ templateId }} ({{ templateVersion }}) {{ templateStatus | titlecase }}</p>
+        <div class="product-info" *ngIf="template">
+            <h2>{{template.name}} Template</h2>
+            <p>{{ template.templateName }} - {{ template.templateId }} ({{ template.templateVersion }}) {{
+                template.templateStatus | titlecase }}</p>
         </div>
         <div class="header-actions">
             <!-- <button class="btn filter" (click)="filterBy()">Filter By</button>
@@ -70,12 +71,91 @@
                     <ng-container *ngIf="treeNodes[nodeId] as node">
                         <div class="node-container" [style.left.px]="node.position?.x" [style.top.px]="node.position?.y"
                             cdkDrag cdkDragBoundary=".canvas" (cdkDragEnded)="onNodeDragEnd($event, nodeId)">
-                            <div class="node" [ngStyle]="getNodeStyle(node)" (click)="openNodeForm(nodeId)">
-                                {{ node.label }}
-                                <div class="node-description" *ngIf="node.formData">
-                                    {{ node.formData.description || node.placeholder }}
+                            <div class="rounded border border-gray-300 shadow w-40 cursor-pointer"
+                                (click)="openNodeForm(nodeId)">
+                                <!-- Header with dynamic background color -->
+                                <div class="text-white text-center text-sm font-semibold py-1 rounded-t w-[14rem]"
+                                    [ngStyle]="{ 'background-color': node.color }">
+                                    {{ node.label }}
+                                </div>
+                                <!-- Body -->
+                                <div
+                                    class="bg-white text-xs text-gray-700 p-2 space-y-4 bg-blue-50 w-[14rem] rounded shadow">
+                                    <div *ngIf="node.type === 'product' && node.formData" class="space-y-1">
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">Product Name:</span>
+                                            <span class="text-right ml-2">{{ node.formData.name || node.placeholder }}</span>
+                                        </div>
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">Product Type:</span>
+                                            <span class="text-right ml-2">{{ node.formData.productType }}</span>
+                                        </div>
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">Effective Date:</span>
+                                            <span class="text-right ml-2">{{ node.formData.effectiveDate }}</span>
+                                        </div>
+                                    </div>
+                                    <div *ngIf="node.type === 'section' && node.formData" class="space-y-1">
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">Section Name:</span>
+                                            <span class="text-left ml-2">{{ node.formData.name || node.placeholder }}</span>
+                                        </div>
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">Effective Date:</span>
+                                            <span class="text-left ml-2">{{ node.formData.effectiveDate }}</span>
+                                        </div>
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">Status:</span>
+                                            <span class="text-left ml-2">{{ node.formData.status }}</span>
+                                        </div>
+                                    </div>
+                                    <div *ngIf="node.type === 'coverType' && node.formData" class="space-y-1">
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">Cover Name:</span>
+                                            <span class="text-left ml-2">{{ node.formData.name || node.placeholder }}</span>
+                                        </div>
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">Cover Type:</span>
+                                            <span class="text-left ml-2">{{ node.formData.type }}</span>
+                                        </div>
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">Status:</span>
+                                            <span class="text-left ml-2">{{ node.formData.status }}</span>
+                                        </div>
+                                    </div>
+                                     <div *ngIf="node.type === 'cover' && node.formData" class="space-y-1">
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">Calculation Type:</span>
+                                            <span class="text-left ml-2">{{ node.formData.calculationType }}</span>
+                                        </div>
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">ExcessPercent:</span>
+                                            <span class="text-left ml-2">{{ node.formData.excessPercent }}</span>
+                                        </div>
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">ExcessAmount:</span>
+                                            <span class="text-left ml-2">{{ node.formData.excessAmount }}</span>
+                                        </div>
+                                         <div class="flex flex-start">
+                                            <span class="font-medium text-left">ExcessDesc:</span>
+                                            <span class="text-left ml-2">{{ node.formData.excessDesc }}</span>
+                                        </div>
+                                    </div>
+                                    <div *ngIf="node.type === 'coverage-limit' && node.formData" class="space-y-1">
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">Limit:</span>
+                                            <span class="text-left ml-2">{{ node.formData.coverageLimit }}</span>
+                                        </div>
+                                    </div>
+                                    <div *ngIf="node.type === 'sumInsured' && node.formData" class="space-y-1">
+                                        <div class="flex flex-start">
+                                            <span class="font-medium text-left">SumInsured:</span>
+                                            <span class="text-left ml-2">{{ node.formData.sumInsured }}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+
                             <div class="node-children">
                                 <div *ngFor="let childId of node.children" class="child-node">
                                     <ng-container
@@ -89,10 +169,8 @@
                     </ng-container>
                 </ng-template>
 
-
                 <ng-container *ngTemplateOutlet="nodeTemplate; context: {$implicit: rootNodeId}"></ng-container>
             </div>
-
             <div class="empty-canvas" *ngIf="!rootNodeId">
                 <p>Drag and drop a Policy Element to start building your template</p>
             </div>
@@ -102,84 +180,341 @@
     <!-- Node Form Modal -->
     <div class="modal" *ngIf="showFormModal && currentFormNode">
         <div class="modal-content">
-            <h3>{{ currentFormNode.label }}</h3>
+            <h3 class="modal-header">{{ currentFormNode.label }}</h3>
 
             <ng-container *ngIf="!currentFormNode.formData">
                 {{ initFormData(currentFormNode) }}
             </ng-container>
 
-            <!-- Form fields based on node type -->
-            <div class="form-group" *ngIf="currentFormNode.type === 'plan'">
-                <label>Plan Name</label>
-                <input type="text" [(ngModel)]="currentFormNode.formData.name">
-            </div>
-
-            <div class="form-group" *ngIf="currentFormNode.type === 'benefit-type'">
-                <label>Benefit Type</label>
-                <select [(ngModel)]="currentFormNode.formData.benefitType">
-                    <option value="inpatient">Inpatient</option>
-                    <option value="outpatient">Outpatient</option>
-                    <option value="dental">Dental</option>
-                    <option value="vision">Vision</option>
-                </select>
-            </div>
-
-            <div class="form-group" *ngIf="currentFormNode.type === 'unit-price'">
-                <label>Price per Unit</label>
-                <input type="number" [(ngModel)]="currentFormNode.formData.price">
-            </div>
-
-            <div class="form-group" *ngIf="currentFormNode.type === 'benefits'">
-                <label>Benefit Description</label>
-                <textarea [(ngModel)]="currentFormNode.formData.description"></textarea>
-            </div>
-
-            <!-- Form fields for limit types -->
-            <div class="form-group" *ngIf="currentFormNode.type.includes('limit') || 
-                                    currentFormNode.type === 'deductible' || 
-                                    currentFormNode.type === 'copayment'">
-                <label>Limit Type</label>
-                <select [(ngModel)]="currentFormNode.formData.limitType">
-                    <option value="sum-insured">Sum Insured</option>
-                    <option value="retail">Retail</option>
-                    <option value="duration">Duration</option>
-                    <option value="deductible">Deductible</option>
-                    <option value="copayment">Copayment</option>
-                </select>
-
-                <div *ngIf="currentFormNode.type === 'duration-limit'">
-                    <label>Unit</label>
-                    <select [(ngModel)]="currentFormNode.formData.unit">
-                        <option value="days">Days</option>
-                        <option value="weeks">Weeks</option>
-                        <option value="months">Months</option>
-                        <option value="years">Years</option>
+            <!-- Product Details-->
+            <div class="grid grid-cols-3 gap-4" *ngIf="currentFormNode?.type === 'product'">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Product Name *</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.name"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Product Description *</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.description"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Regulatory Code</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.regulatoryCode"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Product Icon *</label>
+                    <select [(ngModel)]="currentFormNode.formData.icon"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+                        <option value="" disabled>Select Icon</option>
+                        <option *ngFor="let icon of productIcons" [value]="icon">{{ icon }}</option>
                     </select>
-
-                    <label>Number of {{ currentFormNode.formData.unit || 'Days' }}</label>
-                    <input type="number" [(ngModel)]="currentFormNode.formData.duration">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Currency</label>
+                    <select [(ngModel)]="currentFormNode.formData.currency"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+                        <option value="" disabled>Select Currency</option>
+                        <option *ngFor="let currency of currencies" [value]="currency">{{ currency }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Product Type *</label>
+                    <select [(ngModel)]="currentFormNode.formData.productType" class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+                        <option value="productName" disabled>Select Product Type</option>
+                        <option *ngFor="let type of productTypes" [value]="type">{{ type }}</option>
+                    </select>
                 </div>
 
-                <div *ngIf="currentFormNode.type !== 'duration-limit'">
-                    <label>Amount</label>
-                    <input type="number" [(ngModel)]="currentFormNode.formData.amount">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Effective Date</label>
+                    <input type="date" [(ngModel)]="currentFormNode.formData.effectiveDate"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Status</label>
+                    <div class="flex gap-2 mt-1">
+                        <label *ngFor="let status of ['Pending', 'Active', 'DeActive']">
+                            <input type="radio" name="status" [(ngModel)]="currentFormNode.formData.status"
+                                [value]="status" />
+                            {{ status }}
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Package Policy *</label>
+                    <div class="flex gap-2 mt-1">
+                        <label>
+                            <input type="radio" name="packagePolicy"
+                                [(ngModel)]="currentFormNode.formData.packagePolicy" value="Yes" /> Yes
+                        </label>
+                        <label>
+                            <input type="radio" name="packagePolicy"
+                                [(ngModel)]="currentFormNode.formData.packagePolicy" value="No" /> No
+                        </label>
+                    </div>
+                </div>
+                <div class="col-span-3">
+                    <label class="block text-sm font-medium text-gray-700">Remarks *</label>
+                    <textarea [(ngModel)]="currentFormNode.formData.remarks" rows="3"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2"></textarea>
                 </div>
             </div>
 
-            <div class="form-group" *ngIf="currentFormNode.type === 'provider-rate'">
-                <label>Provider Rate (%)</label>
-                <input type="number" [(ngModel)]="currentFormNode.formData.rate">
+            <!-- Section Details -->
+            <div class="grid grid-cols-3 gap-4" *ngIf="currentFormNode?.type === 'section'">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Section Name *</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.name"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <!-- <div>
+                    <label class="block text-sm font-medium text-gray-700">Product Description *</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.description"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div> -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Regulatory Code</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.regulatoryCode"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Product Type *</label>
+                    <select [(ngModel)]="productName" class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+                        <option value="" disabled>Select Product Type</option>
+                        <option *ngFor="let type of productTypes" [value]="type">{{ type }}</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Effective Date</label>
+                    <input type="date" [(ngModel)]="currentFormNode.formData.effectiveDate"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Status</label>
+                    <div class="flex gap-2 mt-1">
+                        <label *ngFor="let status of ['Pending', 'Active', 'DeActive']">
+                            <input type="radio" name="status" [(ngModel)]="currentFormNode.formData.status"
+                                [value]="status" />
+                            {{ status }}
+                        </label>
+                    </div>
+                </div>
+                <div class="col-span-1">
+                    <label class="block text-sm font-medium text-gray-700">Remarks *</label>
+                    <textarea [(ngModel)]="currentFormNode.formData.remarks" rows="3"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2"></textarea>
+                </div>
+            </div>
+            <!-- Cover Type -->
+            <div class="grid grid-cols-2 gap-4" *ngIf="currentFormNode.type === 'coverType'">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Cover Name *</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.name"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Cover Type *</label>
+                    <select [(ngModel)]="currentFormNode.formData.type"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+                        <option value="0" disabled>Select Cover Type</option>
+                        <option *ngFor="let type of coverTypes" [value]="type">{{ type }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Cover Description *</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.description"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Regulatory Code</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.regulatoryCode"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tooltip</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.tooltip"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div class="flex gap-2 mt-1">
+                    <label class="block text-sm font-medium text-gray-700">SubCoverYN *</label>
+
+                    <label>
+                        <input type="radio" name="subCoverYN" [(ngModel)]="currentFormNode.formData.subCoverYN"
+                            value="Yes" /> Yes
+                    </label>
+                    <label>
+                        <input type="radio" name="subCoverYN" [(ngModel)]="currentFormNode.formData.subCoverYN"
+                            value="No" /> No
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Status</label>
+                    <div class="flex gap-2 mt-1">
+                        <label *ngFor="let status of ['Pending', 'Active', 'DeActive', 'Referral']">
+                            <input type="radio" name="status" [(ngModel)]="currentFormNode.formData.status"
+                                [value]="status" />
+                            {{ status }}
+                        </label>
+                    </div>
+                </div>
+                <div class="col-span-1">
+                    <label class="block text-sm font-medium text-gray-700">Remarks *</label>
+                    <textarea [(ngModel)]="currentFormNode.formData.remarks" rows="3"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2"></textarea>
+                </div>
+            </div>
+            <!-- Cover Details -->
+            <div class="grid grid-cols-2 gap-4" *ngIf="currentFormNode?.type === 'cover'">
+                <p class="block text-sm font-semibold" style="color: rgb(155, 155, 155);">Coverage Type:
+                    {{coverageType.type}}</p>
+                <p class="block text-sm font-semibold" style="color: rgb(155, 155, 155);">Cover Name:
+                    {{coverageType.name}}</p>
+
+                <!-- <div>
+                    <label class="block text-sm font-medium text-gray-700">Coverage limit *</label>
+                    <input type="number" [(ngModel)]="currentFormNode.formData.coverageLimit"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div> -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Calculation Type *</label>
+                    <select [(ngModel)]="currentFormNode.formData.calculationType"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+                        <option value="" disabled>---Select---</option>
+                        <option *ngFor="let type of calculationType" [value]="type">{{ type }}</option>
+                    </select>
+                </div>
+                 <div>
+                    <label class="block text-sm font-medium text-gray-700">ProRata</label>
+                    <select [(ngModel)]="currentFormNode.formData.proRata"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+                        <option value="0" disabled>---Select---</option>
+                        <option *ngFor="let type of proRata" [value]="type">{{ type }}</option>
+                    </select>
+                </div>
+                <div class="flex gap-4 mt-1">
+                    <label class="text-sm font-medium">Is Tax
+                        Exempted *</label>
+
+                    <label class="text-sm">
+                        <input type="radio" name="taxExempted" [(ngModel)]="currentFormNode.formData.taxExcempted"
+                            value="Yes" />
+                        Yes
+                    </label>
+
+                    <label class="text-sm">
+                        <input type="radio" name="taxExempted" [(ngModel)]="currentFormNode.formData.taxExcempted"
+                            value="No" />
+                        No
+                    </label>
+                </div>
+                <div *ngIf="currentFormNode.formData.taxExcempted === 'Yes'">
+                    <label class="block text-sm font-medium">
+                        Tax Exemption Reference *
+                    </label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.excemptionReference"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div *ngIf="currentFormNode.formData.taxExcempted === 'Yes'">
+                    <label class="block text-sm font-medium">
+                        Tax Exemption Type
+                    </label>
+                    <select [(ngModel)]="currentFormNode.formData.excemptionType"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+                        <option value="0" disabled>---Select---</option>
+                        <option *ngFor="let type of excemptionType" [value]="type">{{ type }}</option>
+                    </select>
+                </div>
+                <div *ngIf="currentFormNode.formData.calculationType != 'Factor'">
+                    <label class="block text-sm font-medium text-gray-700">Base Rate * </label>
+                    <input type="number" [(ngModel)]="currentFormNode.formData.baseRate"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div *ngIf="coverageType.type === 'Discount' || coverageType.type === 'Loading'">
+                    <label class="block text-sm font-medium text-gray-700">Discount Applicable For</label>
+                    <select [(ngModel)]="currentFormNode.formData.discountApplicableFor"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+                        <option value="0" disabled>---Select---</option>
+                        <option *ngFor="let type of discountApplicableList" [value]="type">{{ type }}</option>
+                    </select>
+                </div>
+                <!-- <div>
+                    <label class="block text-sm font-medium text-gray-700">Minimum SumInsured * </label>
+                    <input type="number" [(ngModel)]="currentFormNode.formData.sumInsured"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div> -->
+                <div *ngIf="currentFormNode.formData.calculationType != 'Factor'">
+                    <label class="block text-sm font-medium text-gray-700">Minimum Premium *</label>
+                    <input type="number" [(ngModel)]="currentFormNode.formData.minimumPremium"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div class="flex gap-2 mt-1">
+                    <label class="block text-sm font-medium text-gray-700">Dependent Cover? *</label>
+
+                    <label>
+                        <input type="radio" name="dependentCover" [(ngModel)]="currentFormNode.formData.dependentCover"
+                            value="Yes" /> Yes
+                    </label>
+                    <label>
+                        <input type="radio" name="dependentCover" [(ngModel)]="currentFormNode.formData.dependentCover"
+                            value="No" /> No
+                    </label>
+                </div>
+                <div *ngIf="currentFormNode.formData.dependentCover === 'Yes'">
+                    <label class="block text-sm font-medium text-gray-700">Dependent Cover Name</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.dependantCoverName"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Effective Date *</label>
+                    <input type="date" [(ngModel)]="currentFormNode.formData.effectiveDate"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div
+                    *ngIf="coverageType.type === 'Discount' || coverageType.type === 'Loading' || coverageType.type === 'Promocode'">
+                    <label class="block text-sm font-medium text-gray-700">Effective End Date *</label>
+                    <input type="date" [(ngModel)]="currentFormNode.formData.effectiveEndDate"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">ExcessPercent *</label>
+                    <input type="number" [(ngModel)]="currentFormNode.formData.excessPercent"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">ExcessAmount *</label>
+                    <input type="number" [(ngModel)]="currentFormNode.formData.excessAmount"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">ExcessDesc *</label>
+                    <input type="number" [(ngModel)]="currentFormNode.formData.excessDesc"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+            </div>
+            <!-- Coverage Limit -->
+             <div class="grid grid-cols-1 gap-4" *ngIf="currentFormNode?.type === 'coverage-limit'">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Coverage Limit *</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.coverageLimit"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
+            </div>
+            <!-- Sum Insured -->
+             <div class="grid grid-cols-1 gap-4" *ngIf="currentFormNode?.type === 'sumInsured'">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Minimum SumInsured *</label>
+                    <input type="text" [(ngModel)]="currentFormNode.formData.sumInsured"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Explanation of Benefit Template</label>
-                <textarea [(ngModel)]="currentFormNode.formData.description"></textarea>
-            </div>
-
-            <div class="form-actions">
-                <button class="btn save" (click)="saveNodeForm(currentFormNode.formData)">Save</button>
-                <button class="btn cancel" (click)="cancelNodeForm()">Cancel</button>
-                <button class="btn remove-button" (click)="removeNode(selectedNode || '')">Remove</button>
+            <div class="flex flex-row-reverse justify-between mt-5">
+                <button class="btn save ml-2" (click)="saveNodeForm(currentFormNode.formData)">Save</button>
+                <button class="btn cancel ml-2" (click)="cancelNodeForm()">Cancel</button>
+                <button class="btn remove-button ml-2" (click)="removeNode(selectedNode || '')">Remove</button>
             </div>
         </div>
     </div>

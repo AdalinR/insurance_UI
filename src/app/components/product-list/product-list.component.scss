@@ -1,0 +1,45 @@
+.product-list{
+    display: flex;
+    flex-direction: column;
+    background: #ffff;
+}
+.header{
+   padding: 2rem;
+   font-size: 16px;
+}
+
+.active-btn{
+    background: #040462;
+    color: #ffff;
+}
+
+.header h3{
+    font-weight: 700;
+    font-size: x-large;
+}
+
+ .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .header {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .active-btn {
+            float: right;
+            padding: 8px 16px;
+            background-color: #040462;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .active-btn:hover {
+            background-color: #0c0c96;
+        }

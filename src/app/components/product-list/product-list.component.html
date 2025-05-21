@@ -1,0 +1,49 @@
+<div class="product-list">
+<div class="header-container">
+    <div class="header">
+        <h3>Products</h3>
+        <p>View your product template here</p>
+    </div>
+
+    <!-- Flex container for dropdown and button -->
+    <div style="display: flex; align-items: center; margin: 2rem;">
+        <select  [(ngModel)]="selectedTemplate" name="template" style="margin-right: 1rem;">
+            <option value="" disabled selected>Select a product</option>
+            <option value="Motor" selected>Motor</option>
+            <option value="Fire">Fire</option>
+            <option value="Life">Life</option>
+        </select>
+        <button class="active-btn" (click)="newTempplate(selectedTemplate)">New Template</button>
+    </div>
+</div>
+    <div style="padding: 1em;">
+        <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+            <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Product Name</th>
+                        <th scope="col" class="px-6 py-3">Product Type</th>
+                        <th scope="col" class="px-6 py-3">Description</th>
+                        <th scope="col" class="px-6 py-3">Section Name</th>
+                        <th scope="col" class="px-6 py-3">Status</th>
+                        <th scope="col" class="px-6 py-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let product of products"
+                        class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 border-gray-200">
+                        <td class="px-6 py-4">{{ product.name }}</td>
+                        <td class="px-6 py-4">{{ product.type }}</td>
+                        <td class="px-6 py-4">{{ product.description}}</td>
+                        <td class="px-6 py-4">{{ product.sectionName}}</td>
+                        <td class="px-6 py-4">{{ product.templateStatus}}</td>
+                        <td class="px-6 py-4">
+                            <button class="active-btn"
+                                (click)="editProduct(product)">{{product.templateStatus}}</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

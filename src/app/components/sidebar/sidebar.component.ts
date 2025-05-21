@@ -20,7 +20,7 @@ import { AuthService } from '../../../services/auth.service';
           Home
         </a>
         <a 
-          routerLink="/template" 
+          routerLink="/product/List" 
           routerLinkActive="active" 
           class="nav-item"
         >
